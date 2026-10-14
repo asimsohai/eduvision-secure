@@ -7,7 +7,7 @@ It is a rebuild and extension of my BS Cyber Security final year project
 > **Status:** Week 1 of 3. Core system done. Liveness detection (anti-spoofing) is next.
 
 ## Why rebuild it
-
+The original EduVision code (2025) is not published here. A security review of it found the problems below, and this version was written from scratch to fix them:
 A security review of the original project found these problems. This version fixes them:
 
 | Original problem | Fix in this version |
