@@ -1,0 +1,17 @@
+# Secrets and personal data: never commit
+.env
+data/*
+!data/.gitkeep
+*.db
+*.csv
+captures/
+
+# Downloaded models (fetch with scripts/download_models.py)
+models/*.onnx
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/

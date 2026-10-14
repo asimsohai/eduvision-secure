@@ -1,0 +1,5 @@
+opencv-python>=4.8,<5.1
+numpy>=1.26
+bcrypt>=4.1
+python-dotenv>=1.0
+pytest>=8.0
