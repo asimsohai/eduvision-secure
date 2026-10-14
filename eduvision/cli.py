@@ -70,7 +70,60 @@ def cmd_run(conn, args):
     from .camera import run_recognition
     from .face_engine import FaceEngine
 
-    run_recognition(conn, FaceEngine())
+    run_recognition(conn, FaceEngine(), mode=_mode(args))
+
+
+def cmd_pose_test(conn, args):
+    from .camera import pose_test
+    from .face_engine import FaceEngine
+
+    pose_test(FaceEngine())
+
+
+RESULTS_CSV = PROJECT_ROOT / "data" / "evaluation.csv"
+
+
+def _mode(args) -> str:
+    if getattr(args, "no_liveness", False):
+        return "off"
+    return args.liveness or settings.liveness_mode
+
+
+def cmd_evaluate(conn, args):
+    from .evaluation import run_trials
+    from .face_engine import FaceEngine
+
+    mode = _mode(args)
+    seconds = args.seconds or (15.0 if mode == "challenge" else 8.0)
+    print(f"Evaluating '{args.label}' with liveness: {mode}. "
+          f"{args.trials} trials of {seconds:.0f}s. Results go to {RESULTS_CSV.name}.")
+    rows = run_trials(conn, FaceEngine(), args.label, args.trials, seconds,
+                      mode, RESULTS_CSV)
+    accepted = sum(r["accepted"] for r in rows)
+    print(f"Done: {accepted}/{len(rows)} trials accepted.")
+
+
+def cmd_eval_report(conn, args):
+    from .evaluation import markdown_table, read_results, summarise
+
+    rows = read_results(RESULTS_CSV)
+    if not rows:
+        sys.exit("No evaluation results yet. Run: python main.py evaluate --label genuine")
+    table = markdown_table(summarise(rows))
+    print(table)
+    out = PROJECT_ROOT / "data" / "results.md"
+    out.write_text(table + "\n", encoding="utf-8")
+    print(f"\nSaved {out} (copy this table into README.md)")
+
+
+def cmd_eval_clear(conn, args):
+    from .evaluation import clear_mode
+
+    answer = input(f"Delete all '{args.liveness}' trials from {RESULTS_CSV.name}? Type yes: ")
+    if answer.strip().lower() != "yes":
+        sys.exit("Nothing deleted.")
+    n = clear_mode(RESULTS_CSV, args.liveness)
+    print(f"Deleted {n} '{args.liveness}' trials. Other results kept.")
 
 
 def cmd_report(conn, args):
@@ -102,7 +155,25 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--samples", type=int, default=25)
     s.add_argument("--images", help="enrol from a folder of photos instead of the webcam")
 
-    sub.add_parser("run", help="start live recognition")
+    s = sub.add_parser("run", help="start live recognition")
+    s.add_argument("--liveness", choices=["off", "blink", "challenge"],
+                   help="liveness mode (default from .env: challenge)")
+    s.add_argument("--no-liveness", action="store_true", help="same as --liveness off")
+
+    s = sub.add_parser("evaluate", help="measure spoofing resistance with repeated trials")
+    s.add_argument("--label", required=True, choices=["genuine", "print", "screen", "video"])
+    s.add_argument("--trials", type=int, default=10)
+    s.add_argument("--seconds", type=float, help="time per trial (default 8, or 15 for challenge)")
+    s.add_argument("--liveness", choices=["off", "blink", "challenge"],
+                   help="liveness mode to test (default from .env: challenge)")
+    s.add_argument("--no-liveness", action="store_true", help="same as --liveness off")
+
+    sub.add_parser("eval-report", help="summarise evaluation results")
+
+    sub.add_parser("pose-test", help="show the live head-turn measurement (camera check)")
+
+    s = sub.add_parser("eval-clear", help="delete results of one liveness mode (after changing it)")
+    s.add_argument("--liveness", required=True, choices=["off", "blink", "challenge"])
 
     s = sub.add_parser("report", help="show attendance for a day")
     s.add_argument("--date", help="YYYY-MM-DD (default today)")
@@ -117,6 +188,10 @@ COMMANDS = {
     "enroll": (cmd_enroll, True),
     "run": (cmd_run, True),
     "report": (cmd_report, True),
+    "evaluate": (cmd_evaluate, True),
+    "eval-report": (cmd_eval_report, False),
+    "pose-test": (cmd_pose_test, False),
+    "eval-clear": (cmd_eval_clear, True),
 }
 
 

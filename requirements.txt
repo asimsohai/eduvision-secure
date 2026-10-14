@@ -1,4 +1,4 @@
-opencv-python>=4.8,<5.1
+opencv-python>=4.8,<5   # 4.x includes the eye detector used for liveness
 numpy>=1.26
 bcrypt>=4.1
 python-dotenv>=1.0
